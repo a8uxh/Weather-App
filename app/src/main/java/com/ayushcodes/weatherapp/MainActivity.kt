@@ -49,7 +49,7 @@ class MainActivity : AppCompatActivity() { // MAIN ACTIVITY OF THE APPLICATION
     // VIEW BINDING
     private val binding: ActivityMainBinding by lazy { // LAZILY INITIALIZES THE VIEW BINDING
         ActivityMainBinding.inflate(layoutInflater) // INFLATES THE LAYOUT FOR THIS ACTIVITY
-    }
+    } // END OF VIEW BINDING INITIALIZATION
 
     // UI ELEMENTS
     private lateinit var loadingView: ConstraintLayout // A VIEW THAT SHOWS A LOADING PROGRESS BAR
@@ -63,6 +63,7 @@ class MainActivity : AppCompatActivity() { // MAIN ACTIVITY OF THE APPLICATION
     private val PREFS_NAME = "WeatherPrefs" // NAME OF THE SHARED PREFERENCES FILE
     private val LAST_RESPONSE = "LastWeatherResponse" // KEY FOR THE LAST WEATHER RESPONSE
     private val LAST_CITY = "LastCity" // KEY FOR THE LAST SEARCHED CITY
+    private val SEARCH_HISTORY = "SearchHistory" // KEY FOR THE SEARCH HISTORY
 
     // LOCATION SERVICES
     private lateinit var fusedLocationProviderClient: FusedLocationProviderClient // PROVIDES ACCESS TO THE FUSED LOCATION PROVIDER
@@ -89,26 +90,32 @@ class MainActivity : AppCompatActivity() { // MAIN ACTIVITY OF THE APPLICATION
 
         // INITIALIZE THE SUGGESTIONS ADAPTER AND RECYCLERVIEW
         suggestionsAdapter = SuggestionsAdapter(emptyList()) { cityName -> // CREATES A NEW SUGGESTIONS ADAPTER
-            fetchWeatherData(cityName, true) // FETCHES THE WEATHER DATA FOR THE SELECTED CITY
-            binding.suggestionsRecyclerView.visibility = View.GONE // HIDES THE SUGGESTIONS RECYCLER VIEW
-        }
+            if (cityName == "Clear History") { // CHECKS IF THE USER WANTS TO CLEAR HISTORY
+                clearSearchHistory() // CLEARS THE SEARCH HISTORY
+            } else { // IF A CITY NAME WAS SELECTED
+                fetchWeatherData(cityName, true) // FETCHES THE WEATHER DATA FOR THE SELECTED CITY
+                binding.suggestionsRecyclerView.visibility = View.GONE // HIDES THE SUGGESTIONS RECYCLER VIEW
+                binding.searchView.setQuery(cityName, false) // SETS THE SEARCH VIEW TEXT
+                binding.searchView.clearFocus() // CLEARS THE FOCUS FROM THE SEARCH VIEW
+            } // END OF IF-ELSE FOR CITY SELECTION
+        } // END OF SUGGESTIONS ADAPTER INITIALIZATION
         binding.suggestionsRecyclerView.layoutManager = LinearLayoutManager(this) // SETS THE LAYOUT MANAGER FOR THE SUGGESTIONS RECYCLER VIEW
         binding.suggestionsRecyclerView.adapter = suggestionsAdapter // SETS THE ADAPTER FOR THE SUGGESTIONS RECYCLER VIEW
 
         // LAUNCHER FOR LOCATION SETTINGS
         // THIS LAUNCHER HANDLES THE RESULT OF RETURNING FROM THE DEVICE'S LOCATION SETTINGS SCREEN.
-        locationSettingsLauncher =
-            registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        locationSettingsLauncher = // INITIALIZES THE ACTIVITY RESULT LAUNCHER
+            registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { // REGISTERS FOR ACTIVITY RESULT
                 locationDialogShown = false // RESET THE FLAG, SINCE THE USER HAS RETURNED FROM THE SETTINGS SCREEN.
                 loadingView.visibility = View.VISIBLE // SHOW THE PROGRESS BAR WHILE WE RE-CHECK FOR LOCATION.
                 startLocationFlow() // RESTART THE LOCATION FLOW TO GET THE UPDATED STATUS.
-            }
+            } // END OF LOCATION SETTINGS LAUNCHER
 
         registerNetworkCallback() // REGISTERS A NETWORK CALLBACK TO LISTEN FOR NETWORK CHANGES
         SearchCity() // INITIALIZES THE SEARCH FUNCTIONALITY
 
         initialLaunchLogic() // EXECUTES THE INITIAL LAUNCH LOGIC
-    }
+    } // END OF ONCREATE METHOD
 
     // INITIAL LAUNCH LOGIC
     private fun initialLaunchLogic() { // LOGIC TO BE EXECUTED ON THE INITIAL LAUNCH OF THE APP
@@ -118,30 +125,30 @@ class MainActivity : AppCompatActivity() { // MAIN ACTIVITY OF THE APPLICATION
             FancyToast.makeText(this, "Please check your internet connection.", FancyToast.LENGTH_LONG, FancyToast.WARNING, R.drawable.white_cloud, false).show() // SHOWS A WARNING TOAST
             if (!showLastUpdatedData()) { // IF THERE IS NO LAST UPDATED DATA TO SHOW
                 loadingView.visibility = View.GONE // HIDE THE LOADING VIEW AS THERE IS NOTHING TO LOAD
-            }
-        }
-    }
+            } // END OF SHOW LAST DATA CHECK
+        } // END OF INTERNET CHECK
+    } // END OF INITIAL LAUNCH LOGIC METHOD
 
     // ON RESUME
     override fun onResume() { // CALLED WHEN THE ACTIVITY WILL START INTERACTING WITH THE USER
         super.onResume() // CALLS THE PARENT CLASS'S ONRESUME METHOD
         // THE LOGIC TO HANDLE RETURNING FROM SETTINGS IS NOW CORRECTLY IN THE LOCATIONSETTINGSLUANCHER.
         // NO SPECIAL LOGIC IS NEEDED HERE TO PREVENT THE DIALOG FROM SHOWING MULTIPLE TIMES.
-    }
+    } // END OF ONRESUME METHOD
 
     // LOCATION FLOW CONTROLLER
     private fun startLocationFlow() { // CONTROLS THE FLOW OF OBTAINING THE USER'S LOCATION
         if (!checkInternet()) { // IF THERE IS NO INTERNET
             if (!showLastUpdatedData()) { // AND IF THERE IS NO LAST DATA TO SHOW
                 loadingView.visibility = View.GONE // HIDE THE PROGRESS BAR
-            }
+            } // END OF SHOW LAST DATA CHECK
             return // STOP THE FLOW
-        }
+        } // END OF INTERNET CHECK
 
         // CHECK PERMISSION
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED || // CHECKS IF FINE LOCATION PERMISSION IS GRANTED
-            ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
-        ) { // CHECKS IF COARSE LOCATION PERMISSION IS GRANTED
+            ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED // CHECKS IF COARSE LOCATION PERMISSION IS GRANTED
+        ) { // IF PERMISSION IS GRANTED
             checkLocationEnabled() // CHECKS IF LOCATION IS ENABLED
         } else { // IF PERMISSION IS NOT GRANTED
             if (!permissionAskedOnce) { // CHECKS IF PERMISSION HAS BEEN ASKED BEFORE
@@ -150,10 +157,10 @@ class MainActivity : AppCompatActivity() { // MAIN ACTIVITY OF THE APPLICATION
             } else { // IF PERMISSION HAS BEEN ASKED BEFORE AND WAS DENIED
                 if (!showLastUpdatedData()) { // TRY TO SHOW LAST DATA
                     fetchWeatherData("Innichen") // IF THERE IS NO LAST DATA (FRESH INSTALL), FETCH FOR DEFAULT
-                }
-            }
-        }
-    }
+                } // END OF SHOW LAST DATA CHECK
+            } // END OF PERMISSION ASKED CHECK
+        } // END OF PERMISSION GRANTED CHECK
+    } // END OF START LOCATION FLOW METHOD
 
     // PERMISSION RESULT
     private val locationPermissionRequest = // A LAUNCHER FOR THE LOCATION PERMISSION REQUEST
@@ -166,9 +173,9 @@ class MainActivity : AppCompatActivity() { // MAIN ACTIVITY OF THE APPLICATION
             } else { // IF PERMISSION IS NOT GRANTED
                 if (!showLastUpdatedData()) { // TRY TO SHOW LAST DATA
                     fetchWeatherData("Innichen") // IF THERE IS NO LAST DATA (FRESH INSTALL), FETCH FOR DEFAULT
-                }
-            }
-        }
+                } // END OF SHOW LAST DATA CHECK
+            } // END OF GRANTED CHECK
+        } // END OF LOCATION PERMISSION REQUEST
 
     // CHECK IF GPS IS ON
     private fun checkLocationEnabled() { // CHECKS IF THE LOCATION SERVICES ARE ENABLED ON THE DEVICE
@@ -190,18 +197,18 @@ class MainActivity : AppCompatActivity() { // MAIN ACTIVITY OF THE APPLICATION
                     it.dismissWithAnimation() // DISMISSES THE DIALOG WITH AN ANIMATION
                     val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS) // CREATES AN INTENT TO OPEN THE LOCATION SETTINGS
                     locationSettingsLauncher.launch(intent) // LAUNCHES THE LOCATION SETTINGS SCREEN
-                }
+                } // END OF CONFIRM CLICK LISTENER
                 .setCancelText("Cancel") // SETS THE CANCEL BUTTON TEXT
                 .setCancelClickListener { // SETS THE CANCEL BUTTON CLICK LISTENER
                     it.dismissWithAnimation() // DISMISSES THE DIALOG WITH AN ANIMATION
                     locationDialogShown = false // IMPORTANT: RESET THE FLAG ON CANCELLATION.
                     if (!showLastUpdatedData()) { // TRY TO SHOW LAST DATA
                         fetchWeatherData("Innichen") // IF THERE IS NO LAST DATA (FRESH INSTALL), FETCH FOR DEFAULT
-                    }
-                }
+                    } // END OF SHOW LAST DATA CHECK
+                } // END OF CANCEL CLICK LISTENER
                 .show() // SHOWS THE DIALOG
-        }
-    }
+        } // END OF ENABLED CHECK
+    } // END OF CHECK LOCATION ENABLED METHOD
 
     // GET LOCATION
     @SuppressLint("MissingPermission") // SUPPRESSES THE MISSING PERMISSION WARNING
@@ -222,9 +229,9 @@ class MainActivity : AppCompatActivity() { // MAIN ACTIVITY OF THE APPLICATION
                             } else { // IF NO CITY NAME WAS FOUND FROM COORDINATES
                                 if (!showLastUpdatedData()) { // TRY TO SHOW LAST DATA
                                     fetchWeatherData("Innichen") // FETCH DEFAULT WEATHER DATA
-                                }
-                            }
-                        }
+                                } // END OF SHOW LAST DATA CHECK
+                            } // END OF CITY NAME CHECK
+                        } // END OF GET ADDRESS FROM LOCATION
                     } else { // IF THE ANDROID VERSION IS LOWER THAN TIRAMISU
                         Thread { // CREATES A NEW THREAD
                             val cityName = getCityName(location.latitude, location.longitude) // GETS THE CITY NAME
@@ -234,18 +241,18 @@ class MainActivity : AppCompatActivity() { // MAIN ACTIVITY OF THE APPLICATION
                                 } else { // IF A CITY NAME WAS NOT FOUND
                                     if (!showLastUpdatedData()) { // TRY TO SHOW LAST DATA
                                         fetchWeatherData("Innichen") // FETCH DEFAULT WEATHER DATA
-                                    }
-                                }
-                            }
+                                    } // END OF SHOW LAST DATA CHECK
+                                } // END OF CITY NAME CHECK
+                            } // END OF RUN ON UI THREAD
                         }.start() // STARTS THE THREAD
-                    }
+                    } // END OF SDK VERSION CHECK
                 } else { // THIS BLOCK IS EXECUTED IF LOCATION IS NULL, MEANING LOCATION COULD NOT BE FETCHED.
                     if (!showLastUpdatedData()) { // TRY TO SHOW LAST KNOWN WEATHER.
                         fetchWeatherData("Innichen") // FETCH DEFAULT WEATHER DATA
-                    }
-                }
-            }
-    }
+                    } // END OF SHOW LAST DATA CHECK
+                } // END OF LOCATION NULL CHECK
+            } // END OF ON SUCCESS LISTENER
+    } // END OF GET CURRENT LOCATION METHOD
 
     // GET CITY NAME
     private fun getCityName(lat: Double, long: Double): String? { // GETS THE CITY NAME FROM LATITUDE AND LONGITUDE
@@ -255,12 +262,19 @@ class MainActivity : AppCompatActivity() { // MAIN ACTIVITY OF THE APPLICATION
             address?.firstOrNull()?.locality ?: address?.firstOrNull()?.adminArea // RETURNS THE CITY NAME
         } catch (e: Exception) { // CATCHES ANY EXCEPTION THAT MIGHT OCCUR
             null // RETURNS NULL IF AN EXCEPTION OCCURS
-        } // RETURNS NULL IF AN EXCEPTION OCCURS
-    }
+        } // END OF TRY-CATCH BLOCK
+    } // END OF GET CITY NAME METHOD
 
     // SEARCH
     private fun SearchCity() { // INITIALIZES THE SEARCH FUNCTIONALITY
         val searchView = binding.searchView // GETS THE SEARCH VIEW FROM THE BINDING
+
+        searchView.setOnQueryTextFocusChangeListener { _, hasFocus -> // SETS A QUERY TEXT FOCUS CHANGE LISTENER
+            if (hasFocus && searchView.query.isNullOrBlank()) { // CHECKS IF THE VIEW HAS FOCUS AND THE QUERY IS BLANK
+                showSearchHistory() // SHOWS THE SEARCH HISTORY
+            } // END OF FOCUS AND BLANK CHECK
+        } // END OF FOCUS CHANGE LISTENER
+
         searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener { // SETS A QUERY TEXT LISTENER
 
             override fun onQueryTextSubmit(query: String?): Boolean { // CALLED WHEN THE USER SUBMITS THE QUERY
@@ -273,21 +287,22 @@ class MainActivity : AppCompatActivity() { // MAIN ACTIVITY OF THE APPLICATION
                     } else { // IF THERE IS NO INTERNET CONNECTION
                         showLastUpdatedData() // SHOWS THE LAST UPDATED DATA
                         FancyToast.makeText(this@MainActivity, "Network error, please check your internet connection", FancyToast.LENGTH_SHORT, FancyToast.ERROR, R.drawable.white_cloud, false).show() // SHOWS AN ERROR TOAST
-                    }
-                }
+                    } // END OF INTERNET CHECK
+                } // END OF QUERY BLANK CHECK
+                searchView.clearFocus() // CLEARS THE FOCUS FROM THE SEARCH VIEW
                 return true // RETURNS TRUE TO INDICATE THAT THE QUERY HAS BEEN HANDLED
-            }
+            } // END OF ON QUERY TEXT SUBMIT
 
             override fun onQueryTextChange(newText: String?): Boolean { // CALLED WHEN THE QUERY TEXT CHANGES
                 if (newText.isNullOrBlank()) { // CHECKS IF THE NEW TEXT IS NULL OR BLANK
-                    binding.suggestionsRecyclerView.visibility = View.GONE // HIDES THE SUGGESTIONS RECYCLER VIEW
+                    showSearchHistory() // SHOWS THE SEARCH HISTORY
                 } else { // IF THE NEW TEXT IS NOT NULL OR BLANK
                     fetchCitySuggestions(newText) // FETCHES CITY SUGGESTIONS
-                }
+                } // END OF NEW TEXT BLANK CHECK
                 return true // RETURNS TRUE TO INDICATE THAT THE QUERY HAS BEEN HANDLED
-            }
-        })
-    }
+            } // END OF ON QUERY TEXT CHANGE
+        }) // END OF QUERY TEXT LISTENER
+    } // END OF SEARCH CITY METHOD
 
     // FETCH CITY SUGGESTIONS
     // THIS FUNCTION USES THE APIINTERFACE TO FETCH CITY SUGGESTIONS FROM THE GEOCODING API.
@@ -308,16 +323,16 @@ class MainActivity : AppCompatActivity() { // MAIN ACTIVITY OF THE APPLICATION
                         suggestionsAdapter.updateData(listOf("No Result Available..")) // UPDATES THE ADAPTER WITH A "NO RESULT AVAILABLE.." MESSAGE
                     } else { // IF THE SUGGESTIONS LIST IS NOT EMPTY
                         suggestionsAdapter.updateData(suggestions) // UPDATES THE ADAPTER WITH THE SUGGESTIONS
-                    }
+                    } // END OF SUGGESTIONS EMPTY CHECK
                     binding.suggestionsRecyclerView.visibility = View.VISIBLE // SHOWS THE SUGGESTIONS RECYCLER VIEW
-                }
-            }
+                } // END OF RESPONSE SUCCESS CHECK
+            } // END OF ON RESPONSE
 
             override fun onFailure(call: Call<GeoCodingResponse>, t: Throwable) { // CALLED WHEN THE REQUEST FAILS
                 // YOU COULD LOG THE ERROR OR SHOW A TOAST TO THE USER. FOR NOW, WE DO NOTHING.
-            }
-        })
-    }
+            } // END OF ON FAILURE
+        }) // END OF ENQUEUE
+    } // END OF FETCH CITY SUGGESTIONS METHOD
 
     // RETROFIT API
     // THIS FUNCTION USES THE APIINTERFACE TO FETCH WEATHER DATA FROM THE OPENWEATHERMAP API.
@@ -346,19 +361,21 @@ class MainActivity : AppCompatActivity() { // MAIN ACTIVITY OF THE APPLICATION
                     val sharedPrefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) // GETS THE SHARED PREFERENCES
                     sharedPrefs.edit().putString(LAST_RESPONSE, Gson().toJson(responseBody)).putString(LAST_CITY, cityName).apply() // SAVES THE LAST RESPONSE AND CITY
 
+                    addToSearchHistory(cityName) // ADDS THE CITY TO THE SEARCH HISTORY
+
                 } else if (isSearchAction) { // IF THE SEARCH ACTION FAILED
                     FancyToast.makeText(this@MainActivity, "Please enter a correct city or place...", FancyToast.LENGTH_SHORT, FancyToast.ERROR, R.drawable.white_cloud, false).show() // SHOW AN ERROR TOAST FOR AN INVALID CITY
-                }
-            }
+                } // END OF RESPONSE SUCCESS CHECK
+            } // END OF ON RESPONSE
 
             override fun onFailure(call: Call<WeatherApp?>, t: Throwable) { // CALLED WHEN THE REQUEST FAILS
                 loadingView.visibility = View.GONE // HIDES THE LOADING VIEW
                 if (!showLastUpdatedData()) { // TRY TO SHOW LAST DATA
                     FancyToast.makeText(this@MainActivity, "Please check your internet connection", FancyToast.LENGTH_LONG, FancyToast.ERROR, R.drawable.white_cloud, false).show() // SHOWS AN ERROR TOAST
-                }
-            }
-        })
-    }
+                } // END OF SHOW LAST DATA CHECK
+            } // END OF ON FAILURE
+        }) // END OF ENQUEUE
+    } // END OF FETCH WEATHER DATA METHOD
 
     // UPDATE UI
     @SuppressLint("SetTextI18n") // SUPPRESSES THE SETTEXTI18N WARNING
@@ -391,7 +408,7 @@ class MainActivity : AppCompatActivity() { // MAIN ACTIVITY OF THE APPLICATION
         binding.cityName.text = cityName.uppercase(Locale.getDefault()) // SETS THE CITY NAME IN UPPERCASE
 
         changeImagesAccordingtoWeatherCondition(condition) // CHANGES THE IMAGES BASED ON THE WEATHER CONDITION
-    }
+    } // END OF UPDATE UI METHOD
 
     // SHOW LAST UPDATED DATA
     private fun showLastUpdatedData(): Boolean { // SHOWS THE LAST UPDATED WEATHER DATA AND RETURNS TRUE IF DATA WAS FOUND AND SHOWN
@@ -404,9 +421,53 @@ class MainActivity : AppCompatActivity() { // MAIN ACTIVITY OF THE APPLICATION
             updateUI(lastResponse.name ?: lastCity ?: "Innichen", lastResponse) // UPDATES THE UI WITH THE LAST RESPONSE
             loadingView.visibility = View.GONE // HIDE LOADING VIEW SINCE WE HAVE SHOWN THE LAST DATA
             return true // RETURN TRUE INDICATING DATA WAS SHOWN
-        }
+        } // END OF JSON NULL CHECK
         return false // RETURN FALSE IF NO DATA WAS FOUND
-    }
+    } // END OF SHOW LAST UPDATED DATA METHOD
+
+    // SEARCH HISTORY MANAGEMENT
+    private fun getSearchHistory(): MutableList<String> { // GETS THE SEARCH HISTORY FROM SHARED PREFERENCES
+        val sharedPrefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) // GETS THE SHARED PREFERENCES
+        val json = sharedPrefs.getString(SEARCH_HISTORY, null) // GETS THE SEARCH HISTORY FROM SHARED PREFERENCES
+        return if (json != null) { // CHECKS IF THE SEARCH HISTORY IS NOT NULL
+            val type = object : com.google.gson.reflect.TypeToken<MutableList<String>>() {}.type // GETS THE TYPE FOR THE SEARCH HISTORY
+            Gson().fromJson(json, type) // CONVERTS THE JSON STRING TO A LIST OF STRINGS
+        } else { // IF THE SEARCH HISTORY IS NULL
+            mutableListOf() // RETURNS AN EMPTY LIST
+        } // END OF IF-ELSE FOR JSON NULL CHECK
+    } // END OF GET SEARCH HISTORY METHOD
+
+    private fun addToSearchHistory(city: String) { // ADDS A CITY TO THE SEARCH HISTORY
+        val history = getSearchHistory() // GETS THE CURRENT SEARCH HISTORY
+        val cityName = city.split(",")[0].trim() // EXTRACTS THE CITY NAME FROM THE SUGGESTION
+        if (history.contains(cityName)) { // CHECKS IF THE CITY IS ALREADY IN THE HISTORY
+            history.remove(cityName) // REMOVES THE CITY IF IT IS ALREADY IN THE HISTORY
+        } // END OF HISTORY CONTAINS CHECK
+        history.add(0, cityName) // ADDS THE CITY TO THE BEGINNING OF THE HISTORY
+        if (history.size > 5) { // CHECKS IF THE HISTORY SIZE EXCEEDS 5
+            history.removeAt(5) // REMOVES THE OLDEST ENTRY IF THE HISTORY SIZE EXCEEDS 5
+        } // END OF HISTORY SIZE CHECK
+        val sharedPrefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) // GETS THE SHARED PREFERENCES
+        sharedPrefs.edit().putString(SEARCH_HISTORY, Gson().toJson(history)).apply() // SAVES THE UPDATED SEARCH HISTORY
+    } // END OF ADD TO SEARCH HISTORY METHOD
+
+    private fun clearSearchHistory() { // CLEARS THE SEARCH HISTORY
+        val sharedPrefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) // GETS THE SHARED PREFERENCES
+        sharedPrefs.edit().remove(SEARCH_HISTORY).apply() // REMOVES THE SEARCH HISTORY
+        showSearchHistory() // UPDATES THE UI
+    } // END OF CLEAR SEARCH HISTORY METHOD
+
+    private fun showSearchHistory() { // SHOWS THE SEARCH HISTORY IN THE RECYCLER VIEW
+        val history = getSearchHistory() // GETS THE SEARCH HISTORY
+        if (history.isNotEmpty()) { // CHECKS IF THE HISTORY IS NOT EMPTY
+            val historyWithClear = history.toMutableList() // CREATES A MUTABLE COPY OF THE HISTORY
+            historyWithClear.add("Clear History") // ADDS A "CLEAR HISTORY" OPTION
+            suggestionsAdapter.updateData(historyWithClear) // UPDATES THE ADAPTER WITH THE HISTORY
+            binding.suggestionsRecyclerView.visibility = View.VISIBLE // SHOWS THE SUGGESTIONS RECYCLER VIEW
+        } else { // IF THE HISTORY IS EMPTY
+            binding.suggestionsRecyclerView.visibility = View.GONE // HIDES THE SUGGESTIONS RECYCLER VIEW
+        } // END OF HISTORY EMPTY CHECK
+    } // END OF SHOW SEARCH HISTORY METHOD
 
 
     // NETWORK OBSERVER
@@ -419,20 +480,20 @@ class MainActivity : AppCompatActivity() { // MAIN ACTIVITY OF THE APPLICATION
                     isConnected = true // SETS THE CONNECTED FLAG TO TRUE
                     runOnUiThread { // RUNS THE CODE ON THE MAIN THREAD
                         startLocationFlow() // RETRIES THE LOCATION FLOW
-                    }
-                }
-            }
+                    } // END OF RUN ON UI THREAD
+                } // END OF IS CONNECTED CHECK
+            } // END OF ON AVAILABLE
 
             override fun onLost(network: Network) { // CALLED WHEN A NETWORK IS LOST
                 isConnected = false // SETS THE CONNECTED FLAG TO FALSE
                 runOnUiThread { // RUNS THE CODE ON THE MAIN THREAD
                     FancyToast.makeText(this@MainActivity, "Please check your internet connection", FancyToast.LENGTH_LONG, FancyToast.WARNING, R.drawable.white_cloud, false).show() // SHOWS A WARNING TOAST
-                }
-            }
-        }
+                } // END OF RUN ON UI THREAD
+            } // END OF ON LOST
+        } // END OF NETWORK CALLBACK
 
         connectivityManager.registerDefaultNetworkCallback(networkCallback) // REGISTERS THE NETWORK CALLBACK
-    }
+    } // END OF REGISTER NETWORK CALLBACK METHOD
 
     // CHECK INTERNET
     private fun checkInternet(): Boolean { // CHECKS IF THE DEVICE IS CONNECTED TO THE INTERNET
@@ -440,7 +501,7 @@ class MainActivity : AppCompatActivity() { // MAIN ACTIVITY OF THE APPLICATION
         return capabilities != null && // CHECKS IF THE CAPABILITIES ARE NOT NULL
                 (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) || // CHECKS IF WI-FI IS AVAILABLE
                         capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) // CHECKS IF CELLULAR IS AVAILABLE
-    }
+    } // END OF CHECK INTERNET METHOD
 
     // CHANGE IMAGES ACCORDING TO WEATHER CONDITION
     private fun changeImagesAccordingtoWeatherCondition(conditions: String) { // CHANGES THE BACKGROUND AND ANIMATION BASED ON THE WEATHER CONDITION
@@ -465,33 +526,33 @@ class MainActivity : AppCompatActivity() { // MAIN ACTIVITY OF THE APPLICATION
                 binding.root.setBackgroundResource(R.drawable.sunny_background) // SET THE BACKGROUND TO THE SUNNY BACKGROUND DRAWABLE AS A DEFAULT
                 binding.lottieAnimationView.setAnimation(R.raw.sun) // SET THE LOTTIE ANIMATION TO THE SUN ANIMATION AS A DEFAULT
             } // SETS THE DEFAULT BACKGROUND AND ANIMATION
-        }
+        } // END OF WHEN BLOCK
         binding.lottieAnimationView.playAnimation() // PLAYS THE LOTTIE ANIMATION
-    }
+    } // END OF CHANGE IMAGES ACCORDING TO WEATHER CONDITION METHOD
 
     // DAY NAME
     fun dayName(timeStamp: Long): String { // GETS THE DAY NAME FROM A TIMESTAMP
         val sdf = SimpleDateFormat("EEEE", Locale.getDefault()) // CREATES A NEW SIMPLE DATE FORMAT OBJECT
         return sdf.format(Date()) // RETURNS THE FORMATTED DAY NAME
-    }
+    } // END OF DAY NAME METHOD
 
     // DATE
     private fun date(): String { // GETS THE CURRENT DATE
         val sdf = SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) // CREATES A NEW SIMPLE DATE FORMAT OBJECT
         return sdf.format(Date()) // RETURNS THE FORMATTED DATE
-    }
+    } // END OF DATE METHOD
 
     // TIME
     private fun time(timeStamp: Long): String { // GETS THE TIME FROM A TIMESTAMP
         val sdf = SimpleDateFormat("HH:mm", Locale.getDefault()) // CREATES A NEW SIMPLE DATE FORMAT OBJECT
         return sdf.format(Date(timeStamp * 1000)) // RETURNS THE FORMATTED TIME
-    }
+    } // END OF TIME METHOD
 
     // ON DESTROY
     override fun onDestroy() { // CALLED WHEN THE ACTIVITY IS DESTROYED
         super.onDestroy() // CALLS THE PARENT CLASS'S ONDESTROY METHOD
         connectivityManager.unregisterNetworkCallback(networkCallback) // UNREGISTERS THE NETWORK CALLBACK
-    }
+    } // END OF ONDESTROY METHOD
 
     // SUGGESTIONS ADAPTER
     inner class SuggestionsAdapter(
@@ -502,13 +563,13 @@ class MainActivity : AppCompatActivity() { // MAIN ACTIVITY OF THE APPLICATION
         // SUGGESTION VIEW HOLDER
         inner class SuggestionViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) { // A VIEW HOLDER FOR A SINGLE SUGGESTION ITEM
             val textView: TextView = itemView.findViewById(R.id.suggestion_text_view) // THE TEXT VIEW THAT DISPLAYS THE SUGGESTION
-        }
+        } // END OF SUGGESTION VIEW HOLDER
 
         // ON CREATE VIEW HOLDER
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): SuggestionViewHolder { // CALLED WHEN A NEW VIEW HOLDER IS CREATED
             val view = LayoutInflater.from(parent.context).inflate(R.layout.suggestion_item, parent, false) // INFLATES THE LAYOUT FOR A SINGLE SUGGESTION ITEM
             return SuggestionViewHolder(view) // RETURNS A NEW VIEW HOLDER
-        }
+        } // END OF ON CREATE VIEW HOLDER
 
         // ON BIND VIEW HOLDER
         override fun onBindViewHolder(holder: SuggestionViewHolder, position: Int) { // CALLED WHEN A VIEW HOLDER IS BOUND TO A NEW POSITION
@@ -517,9 +578,9 @@ class MainActivity : AppCompatActivity() { // MAIN ACTIVITY OF THE APPLICATION
             holder.itemView.setOnClickListener { // SETS A CLICK LISTENER ON THE ITEM VIEW
                 if (suggestion != "No Result Available..") { // CHECKS IF THE SUGGESTION IS NOT "NO RESULT AVAILABLE.."
                     onItemClick(suggestion) // CALLS THE ON ITEM CLICK LAMBDA FUNCTION
-                }
-            }
-        }
+                } // END OF SUGGESTION VALID CHECK
+            } // END OF CLICK LISTENER
+        } // END OF ON BIND VIEW HOLDER
 
         // GET ITEM COUNT
         override fun getItemCount(): Int = suggestions.size // RETURNS THE NUMBER OF SUGGESTIONS
@@ -528,6 +589,6 @@ class MainActivity : AppCompatActivity() { // MAIN ACTIVITY OF THE APPLICATION
         fun updateData(newSuggestions: List<String>) { // UPDATES THE SUGGESTIONS LIST
             suggestions = newSuggestions // SETS THE NEW SUGGESTIONS
             notifyDataSetChanged() // NOTIFIES THE ADAPTER THAT THE DATA HAS CHANGED
-        }
-    }
-}
+        } // END OF UPDATE DATA METHOD
+    } // END OF SUGGESTIONS ADAPTER INNER CLASS
+} // END OF MAIN ACTIVITY CLASS
